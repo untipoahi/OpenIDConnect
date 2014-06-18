@@ -19,7 +19,8 @@ url = require('url'),
 Q = require('q'),
 jwt = require('jwt-simple'),
 util = require("util"),
-base64url = require('base64url');
+base64url = require('base64url'),
+cleanObj = require('clean-obj');
 
 
 var defaults = {
@@ -209,11 +210,12 @@ function parse_authorization(authorization) {
 	return [username, password];
 }
 
-
-
 function OpenIDConnect(options) {
 	this.settings = extend(true, {}, defaults, options);
-	//var rm = require('redis-modelize');
+
+	//allow removing attributes, by marking thme as null
+	cleanObj(this.settings.models, true);
+
 	for(var i in this.settings.policies) {
 		this.settings.policies[i] = this.settings.policies[i].bind(this);
 	}

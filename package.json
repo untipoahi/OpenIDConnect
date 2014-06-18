@@ -30,7 +30,8 @@
     "q": "0.9.6",
     "jwt-simple": "0.1.0",
     "lodash": "*",
-    "base64url": "*"
+    "base64url": "*",
+    "clean-obj": "*"
   },
   "directories": {
     "example": "./examples"
