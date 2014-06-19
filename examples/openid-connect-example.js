@@ -40,7 +40,7 @@ app.use(logger('dev'));
 app.use(bodyParser());
 app.use(methodOverride());
 app.use(cookieParser('Some Secret!!!'));
-app.use(expressSession({store: new rs({host: '127.0.0.1', port: 6379, client: oidc.redisClient}), secret: 'Some Secret!!!'}));
+app.use(expressSession({store: new rs({host: '127.0.0.1', port: 6379}), secret: 'Some Secret!!!'}));
 // app.use(app.router);
 
 //redirect to login
