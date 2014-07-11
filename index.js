@@ -947,7 +947,7 @@ OpenIDConnect.prototype.token = function() {
  *
  * app.get('/api/user', oidc.check('openid', /profile|email/), function(req, res, next) { ... });
  *
- * If no arguments are given, checks if user is logged in.
+ * If no arguments are given, checks if access token is valid.
  *
  * The other arguments may be of type string or regexp.
  *
@@ -970,21 +970,19 @@ OpenIDConnect.prototype.check = function() {
         },
         self.use(['access', 'auth']),
         function(req, res, next) {
-            var params = req.parsedParams;//self.parseParams(req, res, spec);
+            var params = req.parsedParams;
             if(!scopes.length) {
                 next();
             } else {
                 if(!params.access_token) {
-                    params.access_token = (req.headers['authorization'] || '').indexOf('Bearer ') == 0?req.headers['authorization'].replace('Bearer', '').trim():false;
+                    params.access_token = (req.headers['authorization'] || '').indexOf('Bearer ') === 0 ? req.headers['authorization'].replace('Bearer', '').trim() : false;
                 }
                 if(params.access_token) {
                     req.model.access.findOne({token: params.access_token})
-                    .populate('user')
                     .exec(function(err, access) {
-                    //self.model.access.reverse(params.access_token, function(err, id) {
                         if(!err && access) {
-                            if(access.user.id == req.session.user) {
                                 var errors = [];
+
                                 scopes.forEach(function(scope) {
                                     if(typeof scope == 'string') {
                                         if(access.scope.indexOf(scope) == -1) {
@@ -1006,29 +1004,10 @@ OpenIDConnect.prototype.check = function() {
                                 } else if(errors.length > 0) {
                                     self.errorHandle(res, null, 'invalid_scope', 'Required scope '+errors.pop()+' not granted.');
                                 } else {
-                                    req.session.check = req.session.check||{};
-                                    req.session.check.scopes = access.scope;
+                                    req.check = req.check||{};
+                                    req.check.scopes = access.scope;
                                     next();
                                 }
-                            } else {
-                                //Delete access token, and every thing related to it.
-
-                                req.model.auth.findOne({id: access.auth})
-                                .populate('accessTokens')
-                                .populate('refreshTokens')
-                                .populate('client')
-                                .exec(function(err, auth) {
-                                    auth.accessTokens.forEach(function(access){
-                                        access.destroy();
-                                    });
-                                    auth.refreshTokens.forEach(function(refresh){
-                                        refresh.destroy();
-                                    });
-                                    auth.destroy();
-                                });
-
-                                self.errorHandle(res, null, 'invalid_grant', 'Access token issued for an other user.');
-                            }
                         } else {
                             self.errorHandle(res, null, 'unauthorized_client', 'Access token is not valid.');
                         }
@@ -1058,7 +1037,7 @@ OpenIDConnect.prototype.userInfo = function() {
             function(req, res, next) {
                 req.model.user.findOne({id: req.session.user}, function(err, user) {
                 //self.client(req.session.user, function(err, id) {
-                    if(req.session.check.scopes.indexOf('profile') != -1) {
+                    if(req.check.scopes.indexOf('profile') != -1) {
                         user.sub = user.id;
                         delete user.id;
                         delete user.password;
