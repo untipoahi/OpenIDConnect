@@ -71,7 +71,7 @@ app.post('/my/login', oidc.use({policies: {loggedIn: false}, models: 'user'}), f
   });
 });
 
-app.all('/logout', function(req, res, next) {
+app.all('/logout', oidc.removetokens(), function(req, res, next) {
     req.session.destroy();
     res.redirect('/my/login');
 });

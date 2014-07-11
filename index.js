@@ -893,7 +893,7 @@ OpenIDConnect.prototype.token = function() {
                             function(err, access) {
                                 if(!err && access) {
                                     if(prev.auth) {
-                                        prev.auth.status = 'used'
+                                        prev.auth.status = 'used';
                                         prev.auth.save();
                                     }
 
@@ -1059,7 +1059,7 @@ OpenIDConnect.prototype.userInfo = function() {
                 req.model.user.findOne({id: req.session.user}, function(err, user) {
                 //self.client(req.session.user, function(err, id) {
                     if(req.session.check.scopes.indexOf('profile') != -1) {
-                        user.sub = user.id
+                        user.sub = user.id;
                         delete user.id;
                         delete user.password;
                         delete user.openidProvider;
@@ -1068,6 +1068,65 @@ OpenIDConnect.prototype.userInfo = function() {
                         res.json({email: user.email});
                     }
                 });
+            }
+            ];
+};
+
+/**
+ * removetokens
+ *
+ * returns a function to be placed as middleware in connect/express routing methods. For example:
+ *
+ * app.get('/logout', oidc.removetokens(), function(req, res, next) { ... });
+ *
+ * this function removes all tokens that were issued to the user
+ * access_token is required either as a parameter or as a Bearer token
+ */
+OpenIDConnect.prototype.removetokens = function() {
+    var self = this,
+        spec = {
+            access_token: false //parameter not mandatory
+        };
+
+    return [
+            function(req, res, next) {
+                self.endpointParams(spec, req, res, next);
+            },
+            self.use({policies: {loggedIn: false}, models: ['access','auth']}),
+            function(req, res, next) {
+                var params = req.parsedParams;
+
+                if(!params.access_token) {
+                    params.access_token = (req.headers['authorization'] || '').indexOf('Bearer ') === 0 ? req.headers['authorization'].replace('Bearer', '').trim() : false;
+                }
+                if(params.access_token) {
+                    //Delete the provided access token, and other tokens issued to the user
+                    req.model.access.findOne({token: params.access_token})
+                    .exec(function(err, access) {
+                        if(!err && access) {
+                            req.model.auth.findOne({user: access.user})
+                            .populate('accessTokens')
+                            .populate('refreshTokens')
+                            .exec(function(err, auth) {
+                                if(!err && auth) {
+                                    auth.accessTokens.forEach(function(access){
+                                        access.destroy();
+                                    });
+                                    auth.refreshTokens.forEach(function(refresh){
+                                        refresh.destroy();
+                                    });
+                                    auth.destroy();
+                                }
+                                access.destroy();
+                                return next();
+                            });
+                        } else {
+                            self.errorHandle(res, null, 'unauthorized_client', 'Access token is not valid.');
+                        }
+                    });
+                } else {
+                    self.errorHandle(res, null, 'unauthorized_client', 'No access token found.');
+                }
             }
             ];
 };
