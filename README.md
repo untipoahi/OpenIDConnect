@@ -178,7 +178,18 @@ When you require openid-connect, you may specify options. If you specify them, i
  
   This function is used to check if user logged in, if an access_token is present, and if certain scopes where granted to it.
 
+* **removetokens()**
 
+  returns a function to be placed as middleware in connect/express routing methods. For example:
+  
+  ```
+  app.get('/logout', oidc.removetokens(), function(req, res, next) { ... });
+  ```
+  
+  This function removes all tokens that were issued to the user.
+  
+  __access_token__ is required either as a parameter or as a Bearer token.
+  
 * **userInfo()**
 
   returns a function to be placed as middleware in connect/express routing methods. For example:
