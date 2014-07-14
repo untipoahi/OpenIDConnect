@@ -17,7 +17,7 @@ var crypto = require('crypto')
   logger = require('morgan'),
   bodyParser = require('body-parser'),
   cookieParser = require('cookie-parser'),
-  errorHandler = require('errorHandler'),
+  errorHandler = require('errorhandler'),
   methodOverride = require('method-override');
 
 var app = express();
