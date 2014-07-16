@@ -57,19 +57,29 @@ app.get('/my/login', function(req, res, next) {
   res.send('<html>'+head+body+'</html>');
 });
 
-//process login
-app.post('/my/login', oidc.use({policies: {loggedIn: false}, models: 'user'}), function(req, res, next) {
+var validateUser = function (req, next) {
   delete req.session.error;
   req.model.user.findOne({email: req.body.email}, function(err, user) {
       if(!err && user && user.samePassword(req.body.password)) {
-          req.session.user = user.id;
-          res.redirect(req.param('return_url')||'/user');
+        return next(null, user);
       } else {
-          req.session.error = 'User or password incorrect.';
-          res.redirect(req.path);
+        var error = new Error('Username or password incorrect.');
+        return next(error);
       }
   });
-});
+};
+
+var afterLogin = function (req, res, next) {
+    res.redirect(req.param('return_url')||'/user');
+};
+
+var loginError = function (err, req, res, next) {
+    req.session.error = err.message;
+    res.redirect(req.path);
+};
+
+app.post('/my/login', oidc.login(validateUser), afterLogin, loginError);
+
 
 app.all('/logout', oidc.removetokens(), function(req, res, next) {
     req.session.destroy();

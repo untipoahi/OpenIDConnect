@@ -370,6 +370,37 @@ OpenIDConnect.prototype.parseParams = function(req, res, spec) {
 };
 
 /**
+ * login
+ *
+ * returns a function to be placed as middleware in connect/express routing methods. For example:
+ *
+ * app.post('/login', oidc.login(),  afterLogin, loginErrorHandler);
+ *
+ * This calls verification strategy and creates session.
+ * Verification strategy must have two parameters: req and callback function with two parameters: error and user
+ *
+ *
+ */
+
+OpenIDConnect.prototype.login = function(validateUser) {
+    var self = this;
+
+    return [self.use({policies: {loggedIn: false}, models: 'user'}),
+            function(req, res, next) {
+                validateUser(req, /*next:*/function(error,user) {
+                    if(!error && user) {
+                        if(user.id) {
+                            req.session.user = user.id;
+                        }
+                        return next();
+                    } else {
+                        return next(error);
+                    }
+                });
+    }];
+};
+
+/**
  * auth
  *
  * returns a function to be placed as middleware in connect/express routing methods. For example:
