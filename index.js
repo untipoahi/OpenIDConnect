@@ -1126,9 +1126,16 @@ OpenIDConnect.prototype.removetokens = function() {
                                         refresh.destroy();
                                     });
                                     auth.destroy();
-                                }
-                                access.destroy();
-                                return next();
+                                };
+                                req.model.access.find({user:access.user})
+                                .exec(function(err,accesses){
+                                    if(!err && accesses) {
+                                        accesses.forEach(function(access) {
+                                            access.destroy();
+                                        });
+                                    };
+                                    return next();
+                                });
                             });
                         } else {
                             self.errorHandle(res, null, 'unauthorized_client', 'Access token is not valid.');
