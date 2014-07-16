@@ -148,6 +148,7 @@ var defaults = {
                         client: {model: 'client',   required: true},
                         scope: {type: 'array', required: true},
                         user: {model: 'user', required: true},
+                        sub: {type: 'string', required: true},
                         code: {type: 'string', required: true},
                         redirectUri: {type: 'url', required: true},
                         responseType: {type: 'string', required: true},
@@ -388,9 +389,23 @@ OpenIDConnect.prototype.login = function(validateUser) {
     return [self.use({policies: {loggedIn: false}, models: 'user'}),
             function(req, res, next) {
                 validateUser(req, /*next:*/function(error,user) {
-                    if(!error && user) {
+                    if(!error && !user) {
+                        error = new Error('User not validated');
+                    }
+                    if(!error) {
                         if(user.id) {
                             req.session.user = user.id;
+                        } else {
+                            delete req.session.user;
+                        }
+                        if(user.sub) {
+                            if(typeof user.sub ==='function') {
+                                req.session.sub = user.sub();
+                            } else {
+                                req.session.sub = user.sub;
+                            }
+                        } else {
+                            delete req.session.sub;
                         }
                         return next();
                     } else {
@@ -432,7 +447,7 @@ OpenIDConnect.prototype.auth = function() {
             response_mode: false
     };
     return [function(req, res, next) {
-                self.endpointParams(spec, req, res, next)
+                self.endpointParams(spec, req, res, next);
             },
             self.use(['client', 'consent', 'auth', 'access']),
             function(req, res, next) {
@@ -456,7 +471,7 @@ OpenIDConnect.prototype.auth = function() {
                         });
                     }
                     req.model.client.findOne({key: params.client_id}, function(err, model) {
-                        if(err || !model || model == '') {
+                        if(err || !model || model === '') {
                             deferred.reject({type: 'error', uri: params.redirect_uri, error: 'invalid_client', msg: 'Client '+params.client_id+' doesn\'t exist.'});
                         } else {
                             req.session.client_id = model.id;
@@ -539,6 +554,7 @@ OpenIDConnect.prototype.auth = function() {
                                         client: req.session.client_id,
                                         scope: params.scope.split(' '),
                                         user: req.session.user,
+                                        sub: req.session.sub||req.session.user,
                                         code: token,
                                         redirectUri: params.redirect_uri,
                                         responseType: params.response_type,
@@ -566,7 +582,7 @@ OpenIDConnect.prototype.auth = function() {
                                 //var id_token = {
                                 def.resolve({id_token: {
                                         iss: req.protocol+'://'+req.headers.host,
-                                        sub: req.session.user,
+                                        sub: req.session.sub||req.session.user,
                                         aud: params.client_id,
                                         exp: d+3600,
                                         iat: d,
@@ -773,7 +789,7 @@ OpenIDConnect.prototype.token = function() {
                                     deferred.reject({type: 'error', error: 'invalid_grant', msg: 'Authorization code already used.'});
                                 } else {
                                     //obj.auth = a;
-                                    deferred.resolve({auth: auth, scope: auth.scope, client: client, user: auth.user});
+                                    deferred.resolve({auth: auth, scope: auth.scope, client: client, user: auth.user, sub: auth.sub});
                                 }
                             } else {
                                 deferred.reject({type: 'error', error: 'invalid_grant', msg: 'Authorization code is invalid.'});
@@ -821,7 +837,7 @@ OpenIDConnect.prototype.token = function() {
                                     } else {
                                         refresh.status = 'used';
                                         refresh.save();
-                                        deferred.resolve({auth: auth, client: client, user: auth.user});
+                                        deferred.resolve({auth: auth, client: client, user: auth.user, sub: auth.sub});
                                     }
                                 });
                             } else {
@@ -906,7 +922,7 @@ OpenIDConnect.prototype.token = function() {
                             var d = Math.round(new Date().getTime()/1000);
                             var id_token = {
                                     iss: req.protocol+'://'+req.headers.host,
-                                    sub: prev.user||null,
+                                    sub: prev.sub||prev.user||null,
                                     aud: prev.client.key,
                                     exp: d+3600,
                                     iat: d

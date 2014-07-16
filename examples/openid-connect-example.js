@@ -3,22 +3,22 @@
  * Module dependencies.
  */
 
-var crypto = require('crypto')
-  , express = require('express')
-  , expressSession = require('express-session')
-  , http = require('http')
-  , path = require('path')
-  , querystring = require('querystring')
-  , rs = require('connect-redis')(expressSession)
-  , extend = require('extend')
-  , test = {
+var crypto = require('crypto'),
+    express = require('express'),
+    expressSession = require('express-session'),
+    http = require('http'),
+    path = require('path'),
+    querystring = require('querystring'),
+    rs = require('connect-redis')(expressSession),
+    extend = require('extend'),
+    test = {
         status: 'new'
     },
-  logger = require('morgan'),
-  bodyParser = require('body-parser'),
-  cookieParser = require('cookie-parser'),
-  errorHandler = require('errorHandler'),
-  methodOverride = require('method-override');
+    logger = require('morgan'),
+    bodyParser = require('body-parser'),
+    cookieParser = require('cookie-parser'),
+    errorHandler = require('errorHandler'),
+    methodOverride = require('method-override');
 
 var app = express();
 
@@ -29,6 +29,8 @@ var options = {
     foo: 'Access to foo special resource',
     bar: 'Access to bar special resource'
   },
+//when this line is enabled, user email appears in tokens sub field. By default, id is used as sub.
+  models:{user:{attributes:{sub:function(){return this.email;}}}},
   app: app
 };
 var oidc = require('../index').oidc(options);
