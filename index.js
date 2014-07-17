@@ -1083,9 +1083,8 @@ OpenIDConnect.prototype.userInfo = function() {
             self.use('user'),
             function(req, res, next) {
                 req.model.user.findOne({id: req.session.user}, function(err, user) {
-                //self.client(req.session.user, function(err, id) {
                     if(req.check.scopes.indexOf('profile') != -1) {
-                        user.sub = user.id;
+                        user.sub = req.session.sub||req.session.user;
                         delete user.id;
                         delete user.password;
                         delete user.openidProvider;
