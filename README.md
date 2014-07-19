@@ -188,7 +188,7 @@ When you require openid-connect, you may specify options. If you specify them, i
   
   This function removes all tokens that were issued to the user.
   
-  __access_token__ is required either as a parameter or as a Bearer token.
+  *access_token* is required either as a parameter or as a Bearer token.
   
 * **userInfo()**
 
