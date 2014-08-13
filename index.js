@@ -821,8 +821,8 @@ OpenIDConnect.prototype.token = function() {
                         req.model.refresh.findOne({token: params.refresh_token}, function(err, refresh) {
                             if(!err && refresh) {
                                 req.model.auth.findOne({id: refresh.auth})
-                                .populate('access')
-                                .populate('refresh')
+	                            .populate('accessTokens')
+	                            .populate('refreshTokens')
                                 .populate('client')
                                 .exec(function(err, auth) {
                                     if(refresh.status != 'created') {
@@ -909,8 +909,8 @@ OpenIDConnect.prototype.token = function() {
                                 refresh.destroy();
                                 if(refresh.auth) {
                                     req.model.auth.findOne({id: refresh.auth})
-                                    .populate('access')
-                                    .populate('refresh')
+		                            .populate('accessTokens')
+		                            .populate('refreshTokens')
                                     .exec(function(err, auth) {
                                         if(!auth.access.length && !auth.refresh.length) {
                                             auth.destroy();
@@ -948,8 +948,8 @@ OpenIDConnect.prototype.token = function() {
                                         access.destroy();
                                         if(access.auth) {
                                             req.model.auth.findOne({id: refresh.auth})
-                                            .populate('access')
-                                            .populate('refresh')
+				                            .populate('accessTokens')
+				                            .populate('refreshTokens')
                                             .exec(function(err, auth) {
                                                 if(!auth.access.length && !auth.refresh.length) {
                                                     auth.destroy();
