@@ -853,7 +853,7 @@ OpenIDConnect.prototype.token = function() {
                                             throw {type: 'error', uri: params.redirect_uri, error: 'invalid_scope', msg: 'Scope '+scope+' was not granted for this token.'};
                                         }
                                     });
-                                    obj.scope = params.scope;
+                                    obj.scope = scopes;
                                 }
                             } else {
                                 obj.scope = obj.auth.scope;
