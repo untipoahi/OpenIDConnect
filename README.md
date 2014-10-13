@@ -10,7 +10,7 @@ Major rewrite. Now we use [modelling](https://www.npmjs.org/package/modelling) f
 
 Install via npm:
 
-    npm install openid-connect
+    npm install --save openid-connect
 
 You can add it to your Connect or Express application as another middleware.
 Be sure to enable the `bodyParser` and `query` middleware.

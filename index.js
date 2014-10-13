@@ -1015,7 +1015,7 @@ OpenIDConnect.prototype.check = function() {
         function(req, res, next) {
             self.endpointParams(spec, req, res, next);
         },
-        self.use(['access', 'auth']),
+        self.use({policies: {loggedIn: false}, models:['access', 'auth']}),
         function(req, res, next) {
             var params = req.parsedParams;
             if(!scopes.length) {
