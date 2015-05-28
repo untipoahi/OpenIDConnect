@@ -1080,7 +1080,7 @@ OpenIDConnect.prototype.userInfo = function() {
     var self = this;
     return [
             self.check('openid', /profile|email/),
-            self.use({policies: {loggedIn: false}, models: ['account', 'user']}),
+            self.use({policies: {loggedIn: false}, models: ['access', 'user']}),
             function(req, res, next) {
                 req.model.access.findOne({token: req.parsedParams.access_token})
                 .exec(function(err, access) {
