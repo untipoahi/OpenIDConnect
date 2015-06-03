@@ -1080,21 +1080,27 @@ OpenIDConnect.prototype.userInfo = function() {
     var self = this;
     return [
             self.check('openid', /profile|email/),
-            self.use('user'),
+            self.use({policies: {loggedIn: false}, models: ['access', 'user']}),
             function(req, res, next) {
-                req.model.user.findOne({id: req.session.user}, function(err, user) {
-                    if(req.check.scopes.indexOf('profile') != -1) {
-                        user.sub = req.session.sub||req.session.user;
-                        delete user.id;
-                        delete user.password;
-                        delete user.openidProvider;
-                        res.json(user);
+                req.model.access.findOne({token: req.parsedParams.access_token})
+                .exec(function(err, access) {
+                    if(!err && access) {
+                        req.model.user.findOne({id: access.user}, function(err, user) {
+                            if(req.check.scopes.indexOf('profile') != -1) {
+                                user.sub = req.session.sub||req.session.user;
+                                delete user.id;
+                                delete user.password;
+                                delete user.openidProvider;
+                                res.json(user);
+                            } else {
+                                res.json({email: user.email});
+                            }
+                        });
                     } else {
-                        res.json({email: user.email});
+                        self.errorHandle(res, null, 'unauthorized_client', 'Access token is not valid.');
                     }
                 });
-            }
-            ];
+    }];
 };
 
 /**
