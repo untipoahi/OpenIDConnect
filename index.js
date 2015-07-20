@@ -636,7 +636,7 @@ OpenIDConnect.prototype.auth = function() {
                             }
                             if(resp.access_token && resp.id_token) {
                                 var hbuf = crypto.createHmac('sha256', req.session.client_secret).update(resp.access_token).digest();
-                                resp.id_token.ht_hash = base64url(hbuf.toString('ascii', 0, hbuf.length/2));
+                                resp.id_token.at_hash = base64url(hbuf.toString('ascii', 0, hbuf.length/2));
                                 resp.id_token = jwt.encode(resp.id_token, req.session.client_secret);
                             }
                             deferred.resolve({params: params, type: params.response_type != 'code'?'f':'q', resp: resp});
