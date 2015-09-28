@@ -10,7 +10,7 @@ Major rewrite. Now we use [modelling](https://www.npmjs.org/package/modelling) f
 
 Install via npm:
 
-    npm install openid-connect
+    npm install --save openid-connect
 
 You can add it to your Connect or Express application as another middleware.
 Be sure to enable the `bodyParser` and `query` middleware.
@@ -178,7 +178,18 @@ When you require openid-connect, you may specify options. If you specify them, i
  
   This function is used to check if user logged in, if an access_token is present, and if certain scopes where granted to it.
 
+* **removetokens()**
 
+  returns a function to be placed as middleware in connect/express routing methods. For example:
+  
+  ```
+  app.get('/logout', oidc.removetokens(), function(req, res, next) { ... });
+  ```
+  
+  This function removes all tokens that were issued to the user.
+  
+  *access_token* is required either as a parameter or as a Bearer token.
+  
 * **userInfo()**
 
   returns a function to be placed as middleware in connect/express routing methods. For example:
