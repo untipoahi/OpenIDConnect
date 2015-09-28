@@ -912,7 +912,7 @@ OpenIDConnect.prototype.token = function() {
 		                            .populate('accessTokens')
 		                            .populate('refreshTokens')
                                     .exec(function(err, auth) {
-                                        if(!auth.access.length && !auth.refresh.length) {
+                                        if(auth && !auth.access.length && !auth.refresh.length) {
                                             auth.destroy();
                                         }
                                     });
@@ -947,11 +947,11 @@ OpenIDConnect.prototype.token = function() {
                                     setTimeout(function() {
                                         access.destroy();
                                         if(access.auth) {
-                                            req.model.auth.findOne({id: refresh.auth})
+                                            req.model.auth.findOne({id: access.auth})
 				                            .populate('accessTokens')
 				                            .populate('refreshTokens')
                                             .exec(function(err, auth) {
-                                                if(!auth.access.length && !auth.refresh.length) {
+                                                if(auth && !auth.access.length && !auth.refresh.length) {
                                                     auth.destroy();
                                                 }
                                             });
