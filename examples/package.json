@@ -6,14 +6,13 @@
     "start": "node openid-connect-example.js"
   },
   "dependencies": {
-    "express": "~4.0",
-    "express-session": "*",
-    "connect-redis": "*",
-    "extend": "*",
-    "morgan": "*",
-    "body-parser": "*",
-    "method-override": "*",
-    "cookie-parser": "*",
-    "errorhandler": "*"
+    "body-parser": "^1.14.1",
+    "connect-redis": "^2.5.1",
+    "cookie-parser": "^1.4.0",
+    "errorhandler": "^1.4.2",
+    "express-session": "^1.11.3",
+    "extend": "^3.0.0",
+    "method-override": "^2.3.5",
+    "morgan": "^1.6.1"
   }
 }
