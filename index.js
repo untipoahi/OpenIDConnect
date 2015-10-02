@@ -26,6 +26,7 @@ cleanObj = require('clean-obj');
 var defaults = {
         login_url: '/login',
         consent_url: '/consent',
+        iss: null,
         scopes: {
             openid: 'Informs the Authorization Server that the Client is making an OpenID Connect request.',
             profile:'Access to the End-User\'s default profile Claims.',
@@ -581,7 +582,7 @@ OpenIDConnect.prototype.auth = function() {
                                 var d = Math.round(new Date().getTime()/1000);
                                 //var id_token = {
                                 def.resolve({id_token: {
-                                        iss: req.protocol+'://'+req.headers.host,
+                                        iss: self.settings.iss||req.protocol+'://'+req.headers.host,
                                         sub: req.session.sub||req.session.user,
                                         aud: params.client_id,
                                         exp: d+3600,
@@ -921,7 +922,7 @@ OpenIDConnect.prototype.token = function() {
 
                             var d = Math.round(new Date().getTime()/1000);
                             var id_token = {
-                                    iss: req.protocol+'://'+req.headers.host,
+                                    iss: self.settings.iss||req.protocol+'://'+req.headers.host,
                                     sub: prev.sub||prev.user||null,
                                     aud: prev.client.key,
                                     exp: d+3600,
