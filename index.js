@@ -780,10 +780,10 @@ OpenIDConnect.prototype.token = function() {
                         .exec(function(err, auth) {
                             if(!err && auth) {
                                 if(auth.status != 'created') {
-                                    auth.refresh.forEach(function(refresh) {
+                                    auth.refreshTokens.forEach(function(refresh) {
                                         refresh.destroy();
                                     });
-                                    auth.access.forEach(function(access) {
+                                    auth.accessTokens.forEach(function(access) {
                                         access.destroy();
                                     });
                                     auth.destroy();
@@ -827,10 +827,10 @@ OpenIDConnect.prototype.token = function() {
                                 .populate('client')
                                 .exec(function(err, auth) {
                                     if(refresh.status != 'created') {
-                                        auth.access.forEach(function(access){
+                                        auth.accessTokens.forEach(function(access){
                                             access.destroy();
                                         });
-                                        auth.refresh.forEach(function(refresh){
+                                        auth.refreshTokens.forEach(function(refresh){
                                             refresh.destroy();
                                         });
                                         auth.destroy();
@@ -913,7 +913,7 @@ OpenIDConnect.prototype.token = function() {
 		                            .populate('accessTokens')
 		                            .populate('refreshTokens')
                                     .exec(function(err, auth) {
-                                        if(auth && !auth.access.length && !auth.refresh.length) {
+                                        if(auth && !auth.accessTokens.length && !auth.refreshTokens.length) {
                                             auth.destroy();
                                         }
                                     });
@@ -952,7 +952,7 @@ OpenIDConnect.prototype.token = function() {
 				                            .populate('accessTokens')
 				                            .populate('refreshTokens')
                                             .exec(function(err, auth) {
-                                                if(auth && !auth.access.length && !auth.refresh.length) {
+                                                if(auth && !auth.accessTokens.length && !auth.refreshTokens.length) {
                                                     auth.destroy();
                                                 }
                                             });
