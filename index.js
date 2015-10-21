@@ -1048,7 +1048,7 @@ OpenIDConnect.prototype.check = function() {
                                 });
                                 if(errors.length > 1) {
                                     var last = errors.pop();
-                                    self.errorHandle(res, null, 'invalid_scope', 'Required scopes '+errors.join(', ')+' and '+last+' where not granted.');
+                                    self.errorHandle(res, null, 'invalid_scope', 'Required scopes '+errors.join(', ')+' and '+last+' were not granted.');
                                 } else if(errors.length > 0) {
                                     self.errorHandle(res, null, 'invalid_scope', 'Required scope '+errors.pop()+' not granted.');
                                 } else {
