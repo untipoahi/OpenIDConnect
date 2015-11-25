@@ -65,7 +65,7 @@ var defaults = {
                         middle_name: 'string',
                         family_name: {type: 'string', required: true},
                         profile: 'string',
-                        email: {type: 'string', email: true, required: true, unique: true},
+                        email: {type: 'email', required: true, unique: true},
                         password: 'string',
                         picture: 'binary',
                         birthdate: 'date',
