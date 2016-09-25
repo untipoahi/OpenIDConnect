@@ -212,9 +212,14 @@ function parse_authorization(authorization) {
     return [username, password];
 }
 
-function OpenIDConnect(options) {
+function OpenIDConnect(options, editSettings) {
     this.settings = extend(true, {}, defaults, options);
-
+    debugger;
+    if(editSettings){
+        var modifiedSettings = editSettings(this.settings);
+        if(modifiedSettings)
+            this.settings = modifiedSettings;
+    }
     //allow removing attributes, by marking thme as null
     cleanObj(this.settings.models, true);
 
@@ -516,7 +521,7 @@ OpenIDConnect.prototype.auth = function() {
                                 }
                                 if(redirect) {
                                     req.session.client_key = params.client_id;
-                                    var q = req.path+'?'+querystring.stringify(params);
+                                    var q = req.baseUrl+req.path+'?'+querystring.stringify(params);
                                     deferred.reject({type: 'redirect', uri: self.settings.consent_url+'?'+querystring.stringify({return_url: q})});
                                 } else {
                                     deferred.resolve(params);
@@ -1170,8 +1175,8 @@ OpenIDConnect.prototype.removetokens = function() {
             ];
 };
 
-exports.oidc = function(options) {
-    return new OpenIDConnect(options);
+exports.oidc = function(options, editSettings) {
+    return new OpenIDConnect(options, editSettings);
 };
 
 exports.defaults = function() {
