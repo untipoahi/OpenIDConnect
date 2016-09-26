@@ -214,7 +214,6 @@ function parse_authorization(authorization) {
 
 function OpenIDConnect(options, editSettings) {
     this.settings = extend(true, {}, defaults, options);
-    debugger;
     if(editSettings){
         var modifiedSettings = editSettings(this.settings);
         if(modifiedSettings)
@@ -1008,7 +1007,18 @@ OpenIDConnect.prototype.token = function() {
  */
 OpenIDConnect.prototype.check = function() {
     //Seguir desde acá!!!!
-    var scopes = Array.prototype.slice.call(arguments, 0);
+    var params = Array.prototype.slice.call(arguments, 0),
+        recoverUserInfo = false,
+        scopes = [],
+        models = []
+    if(params.length > 0 && typeof params[0] === 'object'){
+            recoverUserInfo = params[0].userInfo;
+            scopes = params[0].scopes;
+            models = params[0].models || ['user'];
+    }else {
+            scopes = params;
+    }
+
     if(!util.isArray(scopes)) {
         scopes = [scopes];
     }
@@ -1021,7 +1031,7 @@ OpenIDConnect.prototype.check = function() {
         function(req, res, next) {
             self.endpointParams(spec, req, res, next);
         },
-        self.use({policies: {loggedIn: false}, models:['access', 'auth']}),
+        self.use({policies: {loggedIn: false}, models:['access', 'auth'].concat(models) }),
         function(req, res, next) {
             var params = req.parsedParams;
                 if(!params.access_token) {
@@ -1054,9 +1064,17 @@ OpenIDConnect.prototype.check = function() {
                                 } else if(errors.length > 0) {
                                     self.errorHandle(res, null, 'invalid_scope', 'Required scope '+errors.pop()+' not granted.');
                                 } else {
-                                    req.check = req.check||{};
-                                    req.check.scopes = access.scope;
-                                    next();
+                                    req.authtoken = req.authtoken||{};
+                                    req.authtoken.scopes = access.scope;
+                                    if(!recoverUserInfo){
+                                            req.authtoken.user = access.user;
+                                            next();
+                                    }else {
+                                            req.model.user.findOne({id: access.user}).exec(function(err, user) {
+                                                req.authtoken.user = user.toJSON();
+                                                next();
+                                            });
+                                    }
                                 }
                         } else {
                             self.errorHandle(res, null, 'unauthorized_client', 'Access token is not valid.');
