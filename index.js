@@ -1024,9 +1024,6 @@ OpenIDConnect.prototype.check = function() {
         self.use({policies: {loggedIn: false}, models:['access', 'auth']}),
         function(req, res, next) {
             var params = req.parsedParams;
-            if(!scopes.length) {
-                next();
-            } else {
                 if(!params.access_token) {
                     params.access_token = (req.headers['authorization'] || '').indexOf('Bearer ') === 0 ? req.headers['authorization'].replace('Bearer', '').trim() : false;
                 }
@@ -1068,7 +1065,6 @@ OpenIDConnect.prototype.check = function() {
                 } else {
                     self.errorHandle(res, null, 'unauthorized_client', 'No access token found.');
                 }
-            }
         }
     ];
 };
