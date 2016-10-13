@@ -391,7 +391,7 @@ OpenIDConnect.prototype.parseParams = function(req, res, spec) {
 OpenIDConnect.prototype.login = function(validateUser) {
     var self = this;
 
-    return [self.use({policies: {loggedIn: false}, models: 'user'}),
+    return [self.use({policies: {loggedIn: false, isAdmin: false}, models: ['user', 'roles']}),
             function(req, res, next) {
                 validateUser(req, /*next:*/function(error,user) {
                     if(!error && !user) {
@@ -399,6 +399,8 @@ OpenIDConnect.prototype.login = function(validateUser) {
                     }
                     if(!error) {
                         if(user.id) {
+                            req.session.roles = [];
+                            user.roles.slice(0, user.roles.length).forEach(function(e){ req.session.roles.push(e.name.toLowerCase()); });
                             req.session.user = user.id;
                         } else {
                             delete req.session.user;
