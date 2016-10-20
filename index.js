@@ -1017,6 +1017,9 @@ OpenIDConnect.prototype.check = function() {
             recoverUserInfo = params[0].userInfo;
             scopes = params[0].scopes;
             models = params[0].models || ['user'];
+            if(models.indexOf('user') == -1){
+                models = ['user'].concat(models);
+            }
     }else {
             scopes = params;
     }
@@ -1067,12 +1070,16 @@ OpenIDConnect.prototype.check = function() {
                                     self.errorHandle(res, null, 'invalid_scope', 'Required scope '+errors.pop()+' not granted.');
                                 } else {
                                     req.authtoken = req.authtoken||{};
+                                    req.authtoken.roles = [];
                                     req.authtoken.scopes = access.scope;
                                     if(!recoverUserInfo){
                                             req.authtoken.user = access.user;
                                             next();
                                     }else {
-                                            req.model.user.findOne({id: access.user}).exec(function(err, user) {
+                                            req.model.user.findOne({id: access.user}).populate('roles').exec(function(err, user) {
+                                                user.roles.slice(0, user.roles.length).forEach(function(e){
+                                                        req.authtoken.roles.push(e.name.toLowerCase());
+                                                });
                                                 req.authtoken.user = user.toJSON();
                                                 next();
                                             });
