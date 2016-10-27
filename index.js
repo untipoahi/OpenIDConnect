@@ -151,7 +151,7 @@ var defaults = {
                         user: {model: 'user', required: true},
                         sub: {type: 'string', required: true},
                         code: {type: 'string', required: true},
-                        redirectUri: {type: 'url', required: true},
+                        redirectUri: {type: 'string', required: true},
                         responseType: {type: 'string', required: true},
                         status: {type: 'string', required: true},
                         accessTokens: {
