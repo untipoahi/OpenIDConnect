@@ -60,7 +60,7 @@ var defaults = {
                     schema: true,
                     policies: 'loggedIn',
                     attributes: {
-                        name: {type: 'string', required: true, unique: true},
+                        name: {type: 'string', required: true },
                         given_name: {type: 'string', required: true},
                         middle_name: 'string',
                         family_name: {type: 'string', required: true},
