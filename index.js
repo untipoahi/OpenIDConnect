@@ -1186,8 +1186,11 @@ OpenIDConnect.prototype.removetokens = function() {
                         }
                     });
                 } else {
-                    self.errorHandle(res, null, 'unauthorized_client', 'No access token found.');
+                    //i dont return error beacause the user can still kill the session
+                    error = 'No access token found.';
+                    //self.errorHandle(res, null, 'unauthorized_client', error);
                 }
+                next();
             }
             ];
 };
