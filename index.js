@@ -310,14 +310,15 @@ OpenIDConnect.prototype.searchUser = function(parts, callback) {
     return new this.orm.user.reverse(parts, callback);
 };*/
 
-OpenIDConnect.prototype.errorHandle = function(res, uri, error, desc) {
+OpenIDConnect.prototype.errorHandle = function(res, uri, error, desc, status) {
+    var status = status || 400;
     if(uri) {
         var redirect = url.parse(uri,true);
         redirect.query.error = error; //'invalid_request';
         redirect.query.error_description = desc; //'Parameter '+x+' is mandatory.';
-        res.redirect(400, url.format(redirect));
+        res.redirect(status, url.format(redirect));
     } else {
-        res.send(400, error+': '+desc);
+        res.send(status, error+': '+desc);
     }
 };
 
@@ -1065,9 +1066,9 @@ OpenIDConnect.prototype.check = function() {
                                 });
                                 if(errors.length > 1) {
                                     var last = errors.pop();
-                                    self.errorHandle(res, null, 'invalid_scope', 'Required scopes '+errors.join(', ')+' and '+last+' were not granted.');
+                                    self.errorHandle(res, null, 'invalid_scope', 'Required scopes '+errors.join(', ')+' and '+last+' were not granted.', 403);
                                 } else if(errors.length > 0) {
-                                    self.errorHandle(res, null, 'invalid_scope', 'Required scope '+errors.pop()+' not granted.');
+                                    self.errorHandle(res, null, 'invalid_scope', 'Required scope '+errors.pop()+' not granted.', 403);
                                 } else {
                                     req.authtoken = req.authtoken||{};
                                     req.authtoken.roles = [];
@@ -1086,11 +1087,11 @@ OpenIDConnect.prototype.check = function() {
                                     }
                                 }
                         } else {
-                            self.errorHandle(res, null, 'unauthorized_client', 'Access token is not valid.');
+                            self.errorHandle(res, null, 'unauthorized_client', 'Access token is not valid.', 401);
                         }
                     });
                 } else {
-                    self.errorHandle(res, null, 'unauthorized_client', 'No access token found.');
+                    self.errorHandle(res, null, 'unauthorized_client', 'No access token found.', 401);
                 }
         }
     ];
