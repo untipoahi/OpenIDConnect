@@ -184,7 +184,7 @@ var defaults = {
                     attributes: {
                         token: {type: 'string', required: true},
                         scope: {type: 'array', required: true},
-                        auth: {model: 'auth', required: true},
+                        auth: {model: 'auth'},
                         status: {type: 'string', required: true}
                     }
                 }
@@ -741,7 +741,7 @@ OpenIDConnect.prototype.token = function() {
             self.endpointParams(spec, req, res, next)
         },
 
-        self.use({policies: {loggedIn: false}, models:['client', 'consent', 'auth', 'access', 'refresh']}),
+        self.use({policies: {loggedIn: false}, models:['client', 'consent', 'auth', 'access', 'refresh', 'user']}),
 
         function(req, res, next) {
             var params = req.parsedParams;
@@ -777,6 +777,23 @@ OpenIDConnect.prototype.token = function() {
                     var deferred = Q.defer();
 
                     switch(params.grant_type) {
+                    //Client is trying to exchange user and password for an access token
+                    case "password":
+                        if(!params.scope)
+                          deferred.reject({type: 'error', error: 'invalid_scopes', msg: 'Valid scopes are spected.'});
+                        req.model.user.findOne({
+                                email: req.body.username
+                        }).populate('roles').exec(function(err, user) {
+                                if (!err && user && user.samePassword(req.body.password)) {
+                                    deferred.resolve({ scope: params.scope.split(' '), auth: false, client: client, user: user, sub: user.id});
+                                } else {
+                                    deferred.reject({type: 'error', error: 'invalid_credentials', msg: 'Username or password incorrect.'});
+                                }
+                        });
+                        return deferred.promise.then(function(obj){
+                            return obj;
+                        });
+                        break;
                     //Client is trying to exchange an authorization code for an access token
                     case "authorization_code":
                         //Step 3: check if code is valid and not used previously
@@ -882,8 +899,9 @@ OpenIDConnect.prototype.token = function() {
 
                 })
                 .then(function(obj) {
+                    var validGrants = ['client_credentials', 'password'];
                     //Check if code was issued for client
-                    if(params.grant_type != 'client_credentials' && obj.auth.client.key != client_key) {
+                    if(validGrants.indexOf(params.grant_type) == -1 && obj.auth.client.key != client_key) {
                         throw {type: 'error', error: 'invalid_grant', msg: 'The code was not issued for this client.'};
                     }
 
@@ -906,27 +924,43 @@ OpenIDConnect.prototype.token = function() {
                         });
                     };
                     var setToken = function(access, refresh) {
-                        req.model.refresh.create({
-                            token: refresh,
-                            scope: prev.scope,
-                            status: 'created',
-                            auth: prev.auth?prev.auth.id:null
-                        },
-                        function(err, refresh) {
-                            setTimeout(function() {
-                                refresh.destroy();
-                                if(refresh.auth) {
-                                    req.model.auth.findOne({id: refresh.auth})
-		                            .populate('accessTokens')
-		                            .populate('refreshTokens')
-                                    .exec(function(err, auth) {
-                                        if(auth && !auth.accessTokens.length && !auth.refreshTokens.length) {
-                                            auth.destroy();
+                        Q.fcall(function() {
+                            // first we check if is necessary to create an refresh token
+                            var deferred = Q.defer();
+                            var scope = prev.scope || params.scope;
+                            if(scope.indexOf('offline_access') > -1){
+                                req.model.refresh.create({
+                                        token: refresh,
+                                        scope: prev.scope,
+                                        status: 'created',
+                                        auth: prev.auth?prev.auth.id:null
+                                },
+                                function(err, refresh) {
+                                        if(!err && refresh){
+                                                setTimeout(function() {
+                                                    refresh.destroy();
+                                                    if(refresh.auth) {
+                                                        req.model.auth.findOne({id: refresh.auth})
+                                                                    .populate('accessTokens')
+                                                                    .populate('refreshTokens')
+                                                        .exec(function(err, auth) {
+                                                            if(auth && !auth.accessTokens.length && !auth.refreshTokens.length) {
+                                                                auth.destroy();
+                                                            }
+                                                        });
+                                                    }
+                                                }, 1000*3600*5); //5 hours
+                                                deferred.resolve(refresh);
+                                        }else{
+                                                deferred.reject({type: 'error', error: 'unespected error', msg: 'Could not create refresh token.'});
                                         }
-                                    });
-                                }
-                            }, 1000*3600*5); //5 hours
-
+                                });
+                            }
+                            else{
+                                    deferred.resolve(null);
+                            }
+                            return deferred.promise;
+                        }).then(function(refresh){
                             var d = Math.round(new Date().getTime()/1000);
                             var id_token = {
                                     iss: self.settings.iss||req.protocol+'://'+req.headers.host,
@@ -970,7 +1004,7 @@ OpenIDConnect.prototype.token = function() {
                                         access_token: access.token,
                                         token_type: access.type,
                                         expires_in: access.expiresIn,
-                                        refresh_token: refresh.token,
+                                        refresh_token: refresh ? refresh.token : null,
                                         id_token: access.idToken
                                     });
                                 }
