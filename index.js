@@ -781,15 +781,20 @@ OpenIDConnect.prototype.token = function() {
                     case "password":
                         if(!params.scope)
                           deferred.reject({type: 'error', error: 'invalid_scopes', msg: 'Valid scopes are spected.'});
-                        req.model.user.findOne({
-                                email: req.body.username
-                        }).populate('roles').exec(function(err, user) {
-                                if (!err && user && user.samePassword(req.body.password)) {
-                                    deferred.resolve({ scope: params.scope.split(' '), auth: false, client: client, user: user, sub: user.id});
-                                } else {
-                                    deferred.reject({type: 'error', error: 'invalid_credentials', msg: 'Username or password incorrect.'});
-                                }
-                        });
+                        else if(!req.body.password)
+                          deferred.reject({type: 'error', error: 'invalid_credentials', msg: 'password attribute is expected'});
+                        else if(!req.body.username)
+                          deferred.reject({type: 'error', error: 'invalid_credentials', msg: 'username attribute is expected'});
+                        else
+                          req.model.user.findOne({
+                                  email: req.body.username
+                          }).populate('roles').exec(function(err, user) {
+                                  if (!err && user && user.samePassword(req.body.password)) {
+                                      deferred.resolve({ scope: params.scope.split(' '), auth: false, client: client, user: user, sub: user.id});
+                                  } else {
+                                      deferred.reject({type: 'error', error: 'invalid_credentials', msg: 'Username or password incorrect.'});
+                                  }
+                          });
                         return deferred.promise.then(function(obj){
                             return obj;
                         });
