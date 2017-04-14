@@ -790,7 +790,45 @@ OpenIDConnect.prototype.token = function() {
                                   email: req.body.username
                           }).populate('roles').exec(function(err, user) {
                                   if (!err && user && user.samePassword(req.body.password)) {
-                                      deferred.resolve({ scope: params.scope.split(' '), auth: false, client: client, user: user, sub: user.id});
+                                      var createToken = function(client, user) {
+                                          var token = crypto.createHash('md5').update(client.key).update(Math.random()+'').digest('hex');
+                                          req.model.auth.findOne({code: token}, function(err, auth){
+                                              if(!auth) {
+                                                  setToken(token, client, user);
+                                              } else {
+                                                  createToken(client, user);
+                                              }
+                                          });
+                                      };
+                                      var setToken = function(token, client, user) {
+                                          req.model.auth.create({
+                                              client: client,
+                                              scope: params.scope.split(' '),
+                                              user: user,
+                                              sub: user.id,
+                                              code: token,
+                                              redirectUri: params.redirect_uri,
+                                              responseType: params.response_type || 'code',
+                                              status: 'created'
+                                          }).exec(function(err, auth) {
+                                              if(!err && auth) {
+                                                  setTimeout(function() {
+                                                      req.model.auth.findOne({code: token}, function(err, auth) {
+                                                          if(auth && auth.status == 'created') {
+                                                              auth.destroy();
+                                                          }
+                                                      });
+                                                  }, 1000*60*10); //10 minutes
+                                                  deferred.resolve({ scope: params.scope.split(' '), auth: auth, client: client, user: user, sub: user.id});
+                                              } else {
+                                                  def.reject(err||'Could not create auth');
+                                              }
+                                          });
+                                      };
+                                      if(params.scope.indexOf('offline_access') > -1)
+                                          createToken(client, user);
+                                      else
+                                          deferred.resolve({ scope: params.scope.split(' '), auth: false, client: client, user: user, sub: user.id});
                                   } else {
                                       deferred.reject({type: 'error', error: 'invalid_credentials', msg: 'Username or password incorrect.'});
                                   }
@@ -867,6 +905,7 @@ OpenIDConnect.prototype.token = function() {
                                     } else {
                                         refresh.status = 'used';
                                         refresh.save();
+                                        debugger;
                                         deferred.resolve({auth: auth, client: client, user: auth.user, sub: auth.sub});
                                     }
                                 });
