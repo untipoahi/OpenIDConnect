@@ -11,7 +11,6 @@ querystring = require('querystring'),
 //serializer = require('serializer'),
 //hashlib = require('hashlib2'),
 modelling = require('modelling'),
-sailsRedis = require('sails-redis'),
 crypto = require('crypto'),
 _ = require('lodash'),
 extend = require('extend'),
@@ -21,174 +20,154 @@ jwt = require('jwt-simple'),
 util = require("util"),
 base64url = require('base64url'),
 cleanObj = require('clean-obj');
-
-
 var defaults = {
-        login_url: '/login',
-        consent_url: '/consent',
-        iss: null,
-        scopes: {
-            openid: 'Informs the Authorization Server that the Client is making an OpenID Connect request.',
-            profile:'Access to the End-User\'s default profile Claims.',
-            email: 'Access to the email and email_verified Claims.',
-            address: 'Access to the address Claim.',
-            phone: 'Access to the phone_number and phone_number_verified Claims.',
-            offline_access: 'Grants access to the End-User\'s UserInfo Endpoint even when the End-User is not present (not logged in).'
-        },
-        policies:{
-            loggedIn: function(req, res, next) {
-                if(req.session.user) {
-                    next();
-                } else {
-                    var q = req.parsedParams?req.path+'?'+querystring.stringify(req.parsedParams):req.originalUrl;
-                    res.redirect(this.settings.login_url+'?'+querystring.stringify({return_url: q}));
-                }
-            },
-        },
-        adapters: {
-            redis: sailsRedis
-        },
-        connections: {
-            def: {
-                adapter: 'redis'
-            }
-        },
-        models: {
-                user: {
-                    identity: 'user',
-                    connection: 'def',
-                    schema: true,
-                    policies: 'loggedIn',
-                    attributes: {
-                        name: {type: 'string', required: true },
-                        given_name: {type: 'string', required: true},
-                        middle_name: 'string',
-                        family_name: {type: 'string', required: true},
-                        profile: 'string',
-                        email: {type: 'email', required: true, unique: true},
-                        password: 'string',
-                        picture: 'binary',
-                        birthdate: 'date',
-                        gender: 'string',
-                        phone_number: 'string',
-                        samePassword: function(clearText) {
-                            var sha256 = crypto.createHash('sha256');
-                            sha256.update(clearText);
-                            return this.password == sha256.digest('hex');
-                        }
-                    },
-                    beforeCreate: function(values, next) {
-                        if(values.password) {
-                            if(values.password != values.passConfirm) {
-                                return next("Password and confirmation does not match");
-                            }
-                            var sha256 = crypto.createHash('sha256');
-                            sha256.update(values.password);
-                            values.password = sha256.digest('hex');
-                        }
-                        next();
-                    },
-                    beforeUpdate: function(values, next) {
-                        if(values.password) {
-                            if(values.password != values.passConfirm) {
-                                return next("Password and confirmation does not match");
-                            }
-                            var sha256 = crypto.createHash('sha256');
-                            sha256.update(values.password);
-                            values.password = sha256.digest('hex');
-                        }
-                        next();
-                    }
-                },
-                client: {
-                    identity: 'client',
-                    connection: 'def',
-                    schema: true,
-                    policies: 'loggedIn',
-                    attributes: {
-                        key: {type: 'string', required: true, unique: true},
-                        secret: {type: 'string', required: true, unique: true},
-                        name: {type: 'string', required: true},
-                        image: 'binary',
-                        user: {model: 'user'},
-                        redirect_uris: {type:'array', required: true},
-                        credentialsFlow: {type: 'boolean', defaultsTo: false}
-                    },
-                    beforeCreate: function(values, next) {
-                        if(!values.key) {
-                            var sha256 = crypto.createHash('sha256');
-                            sha256.update(values.name);
-                            sha256.update(Math.random()+'');
-                            values.key = sha256.digest('hex');
-                        }
-                        if(!values.secret) {
-                            var sha256 = crypto.createHash('sha256');
-                            sha256.update(values.key);
-                            sha256.update(values.name);
-                            sha256.update(Math.random()+'');
-                            values.secret = sha256.digest('hex');
-                        }
-                        next();
-                    }
-                },
-                consent: {
-                    identity: 'consent',
-                    connection: 'def',
-                    policies: 'loggedIn',
-                    attributes: {
-                        user: {model: 'user', required: true},
-                        client: {model: 'client', required: true},
-                        scopes: 'array'
-                    }
-                },
-                auth: {
-                    identity: 'auth',
-                    connection: 'def',
-                    policies: 'loggedIn',
-                    attributes: {
-                        client: {model: 'client',   required: true},
-                        scope: {type: 'array', required: true},
-                        user: {model: 'user', required: true},
-                        sub: {type: 'string', required: true},
-                        code: {type: 'string', required: true},
-                        redirectUri: {type: 'string', required: true},
-                        responseType: {type: 'string', required: true},
-                        status: {type: 'string', required: true},
-                        accessTokens: {
-                            collection: 'access',
-                            via: 'auth'
-                        },
-                        refreshTokens: {
-                            collection: 'refresh',
-                            via: 'auth'
-                        }
-                    }
-                },
-                access: {
-                    identity: 'access',
-                    connection: 'def',
-                    attributes: {
-                        token: {type: 'string', required: true},
-                        type: {type: 'string', required: true},
-                        idToken: 'string',
-                        expiresIn: 'integer',
-                        scope: {type: 'array', required: true},
-                        client: {model: 'client', required: true},
-                        user: {model: 'user', required: true},
-                        auth: {model: 'auth'}
-                    }
-                },
-                refresh: {
-                    identity: 'refresh',
-                    connection: 'def',
-                    attributes: {
-                        token: {type: 'string', required: true},
-                        scope: {type: 'array', required: true},
-                        auth: {model: 'auth'},
-                        status: {type: 'string', required: true}
-                    }
-                }
-        }
+  login_url: '/login',
+  consent_url: '/consent',
+  iss: null,
+  scopes: {
+      openid: 'Informs the Authorization Server that the Client is making an OpenID Connect request.',
+      profile:'Access to the End-User\'s default profile Claims.',
+      email: 'Access to the email and email_verified Claims.',
+      address: 'Access to the address Claim.',
+      phone: 'Access to the phone_number and phone_number_verified Claims.',
+      offline_access: 'Grants access to the End-User\'s UserInfo Endpoint even when the End-User is not present (not logged in).'
+  },
+  models: {
+          user: {
+              identity: 'user',
+              connection: 'def',
+              schema: true,
+              policies: 'loggedIn',
+              attributes: {
+                  name: {type: 'string', required: true },
+                  given_name: {type: 'string', required: true},
+                  middle_name: 'string',
+                  family_name: {type: 'string', required: true},
+                  profile: 'string',
+                  email: {type: 'email', required: true, unique: true},
+                  password: 'string',
+                  picture: 'binary',
+                  birthdate: 'date',
+                  gender: 'string',
+                  phone_number: 'string',
+                  samePassword: function(clearText) {
+                      var sha256 = crypto.createHash('sha256');
+                      sha256.update(clearText);
+                      return this.password == sha256.digest('hex');
+                  }
+              },
+              beforeCreate: function(values, next) {
+                  if(values.password) {
+                      if(values.password != values.passConfirm) {
+                          return next("Password and confirmation does not match");
+                      }
+                      var sha256 = crypto.createHash('sha256');
+                      sha256.update(values.password);
+                      values.password = sha256.digest('hex');
+                  }
+                  next();
+              },
+              beforeUpdate: function(values, next) {
+                  if(values.password) {
+                      if(values.password != values.passConfirm) {
+                          return next("Password and confirmation does not match");
+                      }
+                      var sha256 = crypto.createHash('sha256');
+                      sha256.update(values.password);
+                      values.password = sha256.digest('hex');
+                  }
+                  next();
+              }
+          },
+          client: {
+              identity: 'client',
+              connection: 'def',
+              schema: true,
+              policies: 'loggedIn',
+              attributes: {
+                  key: {type: 'string', required: true, unique: true},
+                  secret: {type: 'string', required: true, unique: true},
+                  name: {type: 'string', required: true},
+                  image: 'binary',
+                  user: {model: 'user'},
+                  redirect_uris: {type:'array', required: true},
+                  credentialsFlow: {type: 'boolean', defaultsTo: false}
+              },
+              beforeCreate: function(values, next) {
+                  if(!values.key) {
+                      var sha256 = crypto.createHash('sha256');
+                      sha256.update(values.name);
+                      sha256.update(Math.random()+'');
+                      values.key = sha256.digest('hex');
+                  }
+                  if(!values.secret) {
+                      var sha256 = crypto.createHash('sha256');
+                      sha256.update(values.key);
+                      sha256.update(values.name);
+                      sha256.update(Math.random()+'');
+                      values.secret = sha256.digest('hex');
+                  }
+                  next();
+              }
+          },
+          consent: {
+              identity: 'consent',
+              connection: 'def',
+              policies: 'loggedIn',
+              attributes: {
+                  user: {model: 'user', required: true},
+                  client: {model: 'client', required: true},
+                  scopes: 'array'
+              }
+          },
+          auth: {
+              identity: 'auth',
+              connection: 'def',
+              policies: 'loggedIn',
+              attributes: {
+                  client: {model: 'client',   required: true},
+                  scope: {type: 'array', required: true},
+                  user: {model: 'user', required: true},
+                  sub: {type: 'string', required: true},
+                  code: {type: 'string', required: true},
+                  redirectUri: {type: 'string', required: true},
+                  responseType: {type: 'string', required: true},
+                  status: {type: 'string', required: true},
+                  accessTokens: {
+                      collection: 'access',
+                      via: 'auth'
+                  },
+                  refreshTokens: {
+                      collection: 'refresh',
+                      via: 'auth'
+                  }
+              }
+          },
+          access: {
+              identity: 'access',
+              connection: 'def',
+              attributes: {
+                  token: {type: 'string', required: true},
+                  type: {type: 'string', required: true},
+                  idToken: 'string',
+                  expiresIn: 'integer',
+                  scope: {type: 'array', required: true},
+                  client: {model: 'client', required: true},
+                  user: {model: 'user', required: true},
+                  auth: {model: 'auth'}
+              }
+          },
+          refresh: {
+              identity: 'refresh',
+              connection: 'def',
+              attributes: {
+                  token: {type: 'string', required: true},
+                  scope: {type: 'array', required: true},
+                  auth: {model: 'auth'},
+                  status: {type: 'string', required: true}
+              }
+          }
+  }
 };
 
 function parse_authorization(authorization) {
@@ -212,103 +191,48 @@ function parse_authorization(authorization) {
     return [username, password];
 }
 
-function OpenIDConnect(options, editSettings) {
-    this.settings = extend(true, {}, defaults, options);
-    if(editSettings){
-        var modifiedSettings = editSettings(this.settings);
-        if(modifiedSettings)
-            this.settings = modifiedSettings;
-    }
-    //allow removing attributes, by marking thme as null
-    cleanObj(this.settings.models, true);
-
-    for(var i in this.settings.policies) {
-        this.settings.policies[i] = this.settings.policies[i].bind(this);
-    }
-
-    if(this.settings.alien) {
-        for(var i in alien) {
-            if(this.settings.models[i]) delete this.settings.models[i];
-        }
-    }
-
-    if(this.settings.orm) {
-        this.orm = this.settings.orm;
-        for(var i in this.settings.policies) {
-            this.orm.setPolicy(true, i, this.settings.policies[i]);
-        }
-    } else {
-
-        this.orm = new modelling({
-            models: this.settings.models,
-            adapters: this.settings.adapters,
-            connections: this.settings.connections,
-            app: this.settings.app,
-            policies: this.settings.policies
-        });
-    }
+function OpenIDConnect(orm, settings) {
+  this.orm = orm;
+  defaults.policies = {
+      loggedIn: function(req, res, next) {
+          var url = settings.login_url || defaults.login_url;
+          if(req.session.user) {
+              next();
+          } else {
+              var q = req.parsedParams?req.path+'?'+querystring.stringify(req.parsedParams):req.originalUrl;
+              res.redirect(url+'?'+querystring.stringify({return_url: q}));
+          }
+      }
+  }
+  this.orm.addConfig(defaults);
+  this.addPolicies(defaults.policies);
+  if(settings && settings.policies) this.addPolicies(settings.policies);
+  this.settings = Object.assign(defaults, settings);
 }
 
 OpenIDConnect.prototype = new EventEmitter();
 
-OpenIDConnect.prototype.done = function() {
-    this.orm.done();
-};
-
-OpenIDConnect.prototype.model = function(name) {
-    return this.orm.model(name);
-}
-
-OpenIDConnect.prototype.use = function(name) {
-    var alien = {};
-    if(this.settings.alien) {
-        var self = this;
-        if(!name) {
-            alien = this.settings.alien;
-        } else {
-            var m;
-            if(_.isPlainObject(name) && name.models) {
-                m = name.models;
-            }
-            if(util.isArray(m||name)) {
-                (m||name).forEach(function(model) {
-                    if(self.settings.alien[model]) {
-                        alien[model] = self.settings.alien[model];
-                    }
-                });
-            } else if(self.settings.alien[m||name]) {
-                alien[m||name] = self.settings.alien[m||name];
-            }
-        }
-    }
-    return [this.orm.use(name), function(req, res, next) {
-        extend(req.model, alien);
-        next();
-    }];
-};
-
 OpenIDConnect.prototype.getOrm = function() {
     return this.orm;
 }
-/*OpenIDConnect.prototype.getClientParams = function() {
-    return this.orm.client.getParams();
-};*/
 
-/*OpenIDConnect.prototype.searchClient = function(parts, callback) {
-    return new this.orm.client.reverse(parts, callback);
+OpenIDConnect.prototype.addPolicies = function(policies) {
+  this.policiesCollection = Object.assign(this.policiesCollection || {}, policies);
+}
+
+OpenIDConnect.prototype.use = function(policies) {
+  policies = policies && typeof policies === 'string' ? policies.split(',') : policies || [];
+  policies = policies.map((policy)=> {
+    debugger;
+    if(this.policiesCollection.hasOwnProperty(policy))
+      return this.policiesCollection[policy]
+    else
+      throw new Error('Non existent policy ' + policy);
+  });
+  return[...policies, function(req, res, next) {
+        next();
+  }];
 };
-
-OpenIDConnect.prototype.getUserParams = function() {
-    return this.orm.user.getParams();
-};
-
-OpenIDConnect.prototype.user = function(params, callback) {
-    return new this.orm.user(params, callback);
-};
-
-OpenIDConnect.prototype.searchUser = function(parts, callback) {
-    return new this.orm.user.reverse(parts, callback);
-};*/
 
 OpenIDConnect.prototype.errorHandle = function(res, uri, error, desc, status) {
     var status = status || 400;
@@ -392,8 +316,7 @@ OpenIDConnect.prototype.parseParams = function(req, res, spec) {
 OpenIDConnect.prototype.login = function(validateUser) {
     var self = this;
 
-    return [self.use({policies: {loggedIn: false, isAdmin: false}, models: ['user', 'roles']}),
-            function(req, res, next) {
+    return [function(req, res, next) {
                 validateUser(req, /*next:*/function(error,user) {
                     if(!error && !user) {
                         error = new Error('User not validated');
@@ -401,7 +324,8 @@ OpenIDConnect.prototype.login = function(validateUser) {
                     if(!error) {
                         if(user.id) {
                             req.session.roles = [];
-                            user.roles.slice(0, user.roles.length).forEach(function(e){ req.session.roles.push(e.name.toLowerCase()); });
+                            if(user.roles)
+                              user.roles.slice(0, user.roles.length).forEach(function(e){ req.session.roles.push(e.name.toLowerCase()); });
                             req.session.user = user.id;
                         } else {
                             delete req.session.user;
@@ -457,8 +381,9 @@ OpenIDConnect.prototype.auth = function() {
     return [function(req, res, next) {
                 self.endpointParams(spec, req, res, next);
             },
-            self.use(['client', 'consent', 'auth', 'access']),
+            self.use('loggedIn'),
             function(req, res, next) {
+                var models = self.orm.getModels();
                 Q(req.parsedParams).then(function(params) {
                     //Step 2: Check if response_type is supported and client_id is valid.
 
@@ -478,7 +403,7 @@ OpenIDConnect.prototype.auth = function() {
                             }
                         });
                     }
-                    req.model.client.findOne({key: params.client_id}, function(err, model) {
+                    models.client.findOne({key: params.client_id}, function(err, model) {
                         if(err || !model || model === '') {
                             deferred.reject({type: 'error', uri: params.redirect_uri, error: 'invalid_client', msg: 'Client '+params.client_id+' doesn\'t exist.'});
                         } else {
@@ -496,7 +421,7 @@ OpenIDConnect.prototype.auth = function() {
                     var reqsco = params.scope.split(' ');
                     req.session.scopes = {};
                     var promises = [];
-                    req.model.consent.findOne({user: req.session.user, client: req.session.client_id}, function(err, consent) {
+                    models.consent.findOne({user: req.session.user, client: req.session.client_id}, function(err, consent) {
                             reqsco.forEach(function(scope) {
                                 var innerDef = Q.defer();
                                 if(!self.settings.scopes[scope]) {
@@ -549,7 +474,7 @@ OpenIDConnect.prototype.auth = function() {
                             case 'code':
                                 var createToken = function() {
                                     var token = crypto.createHash('md5').update(params.client_id).update(Math.random()+'').digest('hex');
-                                    req.model.auth.findOne({code: token}, function(err, auth){
+                                    models.auth.findOne({code: token}, function(err, auth){
                                         if(!auth) {
                                             setToken(token);
                                         } else {
@@ -558,7 +483,7 @@ OpenIDConnect.prototype.auth = function() {
                                     });
                                 };
                                 var setToken = function(token) {
-                                    req.model.auth.create({
+                                    models.auth.create({
                                         client: req.session.client_id,
                                         scope: params.scope.split(' '),
                                         user: req.session.user,
@@ -570,7 +495,7 @@ OpenIDConnect.prototype.auth = function() {
                                     }).exec(function(err, auth) {
                                         if(!err && auth) {
                                             setTimeout(function() {
-                                                req.model.auth.findOne({code: token}, function(err, auth) {
+                                                models.auth.findOne({code: token}, function(err, auth) {
                                                     if(auth && auth.status == 'created') {
                                                         auth.destroy();
                                                     }
@@ -601,7 +526,7 @@ OpenIDConnect.prototype.auth = function() {
                             case 'token':
                                 var createToken = function() {
                                     var token = crypto.createHash('md5').update(params.client_id).update(Math.random()+'').digest('hex');
-                                    req.model.access.findOne({token: token}, function(err, access) {
+                                    models.access.findOne({token: token}, function(err, access) {
                                         if(!access) {
                                             setToken(token);
                                         } else {
@@ -618,7 +543,7 @@ OpenIDConnect.prototype.auth = function() {
                                             client: req.session.client_id,
                                             scope: params.scope.split(' ')
                                     };
-                                    req.model.access.create(obj, function(err, access) {
+                                    models.access.create(obj, function(err, access) {
                                         if(!err && access) {
                                             setTimeout(function() {
                                                 access.destroy();
@@ -692,8 +617,7 @@ OpenIDConnect.prototype.auth = function() {
  */
 OpenIDConnect.prototype.consent = function() {
     var self = this;
-    return [self.use('consent'),
-    function(req, res, next) {
+    return [self.use('loggedIn'), function(req, res, next) {
         var accept = req.param('accept');
         var return_url = req.param('return_url');
         //var client_id = req.query.client_id || req.body.client_id || false;
@@ -702,8 +626,8 @@ OpenIDConnect.prototype.consent = function() {
             for(var i in req.session.scopes) {
                 scopes.push(i);
             }
-            req.model.consent.destroy({user: req.session.user, client: req.session.client_id}, function(err, result) {
-                req.model.consent.create({user: req.session.user, client: req.session.client_id, scopes: scopes}, function(err, consent) {
+            models.consent.destroy({user: req.session.user, client: req.session.client_id}, function(err, result) {
+                models.consent.create({user: req.session.user, client: req.session.client_id, scopes: scopes}, function(err, consent) {
                     res.redirect(return_url);
                 });
             });
@@ -740,9 +664,6 @@ OpenIDConnect.prototype.token = function() {
         function(req, res, next) {
             self.endpointParams(spec, req, res, next)
         },
-
-        self.use({policies: {loggedIn: false}, models:['client', 'consent', 'auth', 'access', 'refresh', 'user']}),
-
         function(req, res, next) {
             var params = req.parsedParams;
 
@@ -763,7 +684,7 @@ OpenIDConnect.prototype.token = function() {
                 Q.fcall(function() {
                     //Step 2: check if client and secret are valid
                     var deferred = Q.defer();
-                    req.model.client.findOne({key: client_key, secret: client_secret}, function(err, client){
+                    models.client.findOne({key: client_key, secret: client_secret}, function(err, client){
                         if(err || !client) {
                             deferred.reject({type: 'error', error: 'invalid_client', msg: 'Client doesn\'t exist or invalid secret.'});
                         } else {
@@ -786,7 +707,7 @@ OpenIDConnect.prototype.token = function() {
                         else if(!req.body.username)
                           deferred.reject({type: 'error', error: 'invalid_credentials', msg: 'username attribute is expected'});
                         else
-                          req.model.user.findOne({
+                          models.user.findOne({
                                   email: req.body.username
                           }).populate('roles').exec(function(err, user) {
                                   if (!err && user && user.samePassword(req.body.password)) {
@@ -802,7 +723,7 @@ OpenIDConnect.prototype.token = function() {
                     //Client is trying to exchange an authorization code for an access token
                     case "authorization_code":
                         //Step 3: check if code is valid and not used previously
-                        req.model.auth.findOne({code: params.code})
+                        models.auth.findOne({code: params.code})
                         .populate('accessTokens')
                         .populate('refreshTokens')
                         .populate('client')
@@ -848,9 +769,9 @@ OpenIDConnect.prototype.token = function() {
                     case "refresh_token":
 
                         //Step 3: check if refresh token is valid and not used previously
-                        req.model.refresh.findOne({token: params.refresh_token}, function(err, refresh) {
+                        models.refresh.findOne({token: params.refresh_token}, function(err, refresh) {
                             if(!err && refresh) {
-                                req.model.auth.findOne({id: refresh.auth})
+                                models.auth.findOne({id: refresh.auth})
 	                            .populate('accessTokens')
 	                            .populate('refreshTokens')
                                 .populate('client')
@@ -934,7 +855,7 @@ OpenIDConnect.prototype.token = function() {
                             var deferred = Q.defer();
                             var scope = prev.scope || params.scope;
                             if(scope.indexOf('offline_access') > -1){
-                                req.model.refresh.create({
+                                models.refresh.create({
                                         token: refresh,
                                         scope: prev.scope,
                                         status: 'created',
@@ -945,7 +866,7 @@ OpenIDConnect.prototype.token = function() {
                                                 setTimeout(function() {
                                                     refresh.destroy();
                                                     if(refresh.auth) {
-                                                        req.model.auth.findOne({id: refresh.auth})
+                                                        models.auth.findOne({id: refresh.auth})
                                                                     .populate('accessTokens')
                                                                     .populate('refreshTokens')
                                                         .exec(function(err, auth) {
@@ -974,7 +895,7 @@ OpenIDConnect.prototype.token = function() {
                                     exp: d+3600,
                                     iat: d
                             };
-                            req.model.access.create({
+                            models.access.create({
                                     token: access,
                                     type: 'Bearer',
                                     expiresIn: 3600,
@@ -994,7 +915,7 @@ OpenIDConnect.prototype.token = function() {
                                     setTimeout(function() {
                                         access.destroy();
                                         if(access.auth) {
-                                            req.model.auth.findOne({id: access.auth})
+                                            models.auth.findOne({id: access.auth})
 				                            .populate('accessTokens')
 				                            .populate('refreshTokens')
                                             .exec(function(err, auth) {
@@ -1016,8 +937,8 @@ OpenIDConnect.prototype.token = function() {
                             });
                         });
                     };
-                    createToken(req.model.access, function(access) {
-                        createToken(req.model.refresh, function(refresh){
+                    createToken(models.access, function(access) {
+                        createToken(models.refresh, function(refresh){
                             setToken(access, refresh);
                         });
                     });
@@ -1051,15 +972,10 @@ OpenIDConnect.prototype.check = function() {
     //Seguir desde acá!!!!
     var params = Array.prototype.slice.call(arguments, 0),
         recoverUserInfo = false,
-        scopes = [],
-        models = []
+        scopes = []
     if(params.length > 0 && typeof params[0] === 'object'){
             recoverUserInfo = params[0].userInfo;
             scopes = params[0].scopes;
-            models = params[0].models || ['user'];
-            if(models.indexOf('user') == -1){
-                models = ['user'].concat(models);
-            }
     }else {
             scopes = params;
     }
@@ -1076,14 +992,14 @@ OpenIDConnect.prototype.check = function() {
         function(req, res, next) {
             self.endpointParams(spec, req, res, next);
         },
-        self.use({policies: {loggedIn: false}, models:['access', 'auth'].concat(models) }),
         function(req, res, next) {
             var params = req.parsedParams;
                 if(!params.access_token) {
                     params.access_token = (req.headers['authorization'] || '').indexOf('Bearer ') === 0 ? req.headers['authorization'].replace('Bearer', '').trim() : false;
                 }
                 if(params.access_token) {
-                    req.model.access.findOne({token: params.access_token})
+                    var models = self.orm.getModels();
+                    models.access.findOne({token: params.access_token})
                     .exec(function(err, access) {
                         if(!err && access) {
                                 var errors = [];
@@ -1116,7 +1032,7 @@ OpenIDConnect.prototype.check = function() {
                                             req.authtoken.user = access.user;
                                             next();
                                     }else {
-                                            req.model.user.findOne({id: access.user}).populate('roles').exec(function(err, user) {
+                                            models.user.findOne({id: access.user}).populate('roles').exec(function(err, user) {
                                                 user.roles.slice(0, user.roles.length).forEach(function(e){
                                                         req.authtoken.roles.push(e.name.toLowerCase());
                                                 });
@@ -1186,19 +1102,19 @@ OpenIDConnect.prototype.removetokens = function() {
             function(req, res, next) {
                 self.endpointParams(spec, req, res, next);
             },
-            self.use({policies: {loggedIn: false}, models: ['access','auth']}),
             function(req, res, next) {
                 var params = req.parsedParams;
+                var model = self.orm.getModels();
 
                 if(!params.access_token) {
                     params.access_token = (req.headers['authorization'] || '').indexOf('Bearer ') === 0 ? req.headers['authorization'].replace('Bearer', '').trim() : false;
                 }
                 if(params.access_token) {
                     //Delete the provided access token, and other tokens issued to the user
-                    req.model.access.findOne({token: params.access_token})
+                    models.access.findOne({token: params.access_token})
                     .exec(function(err, access) {
                         if(!err && access) {
-                            req.model.auth.findOne({user: access.user})
+                            models.auth.findOne({user: access.user})
                             .populate('accessTokens')
                             .populate('refreshTokens')
                             .exec(function(err, auth) {
@@ -1211,7 +1127,7 @@ OpenIDConnect.prototype.removetokens = function() {
                                     });
                                     auth.destroy();
                                 };
-                                req.model.access.find({user:access.user})
+                                models.access.find({user:access.user})
                                 .exec(function(err,accesses){
                                     if(!err && accesses) {
                                         accesses.forEach(function(access) {
@@ -1235,8 +1151,8 @@ OpenIDConnect.prototype.removetokens = function() {
             ];
 };
 
-exports.oidc = function(options, editSettings) {
-    return new OpenIDConnect(options, editSettings);
+exports.oidc = function(orm, settings) {
+    return new OpenIDConnect(orm, settings);
 };
 
 exports.defaults = function() {
