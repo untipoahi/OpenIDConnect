@@ -86,6 +86,8 @@ var defaults = {
                             sha256.update(values.password);
                             values.password = sha256.digest('hex');
                         }
+                        if(values.email)
+                          values.email = values.email.toLowerCase();
                         next();
                     },
                     beforeUpdate: function(values, next) {
@@ -97,6 +99,8 @@ var defaults = {
                             sha256.update(values.password);
                             values.password = sha256.digest('hex');
                         }
+                        if(values.email)
+                          values.email = values.email.toLowerCase();
                         next();
                     }
                 },
