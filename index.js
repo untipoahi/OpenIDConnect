@@ -825,7 +825,7 @@ OpenIDConnect.prototype.token = function() {
                                                   }, 1000*60*10); //10 minutes
                                                   deferred.resolve({ scope: params.scope.split(' '), auth: auth, client: client, user: user, sub: user.id});
                                               } else {
-                                                  def.reject(err||'Could not create auth');
+                                                  deferred.reject(err||'Could not create auth');
                                               }
                                           });
                                       };
