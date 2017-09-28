@@ -997,7 +997,7 @@ OpenIDConnect.prototype.token = function() {
                                                             }
                                                         });
                                                     }
-                                                }, 1000*3600*5); //5 hours
+                                            }, 1000*3600*172); //1 week refresh token expiration time
                                                 deferred.resolve(refresh);
                                         }else{
                                                 deferred.reject({type: 'error', error: 'unespected error', msg: 'Could not create refresh token.'});
